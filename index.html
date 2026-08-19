@@ -168,7 +168,7 @@ function download(filename, obj) {
 
 async function autoLoad(path, statusEl) {
   statusEl.textContent = 'Loading…';
-  const SITE_BASE = 'https://wiscorev2.netlify.app/';
+  const SITE_BASE = 'https://wiscore.co/';
   try {
     const res = await fetch(SITE_BASE + path + '?t=' + Date.now());
     if (!res.ok) throw new Error(res.status);
