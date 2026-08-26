@@ -31,7 +31,7 @@
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; margin-bottom: 16px; }
   .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 600; }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-  select, input[type=text], input[type=number], input[type=search], input[type=file], textarea {
+  select, input[type=text], input[type=password], input[type=number], input[type=search], input[type=file], textarea {
     background: var(--elevated); border: 1px solid var(--border); color: var(--text);
     padding: 8px 12px; border-radius: 4px; font-size: 14px; font-family: inherit;
   }
@@ -65,8 +65,10 @@
     <div class="side-link active" data-tab="players">Players</div>
     <div class="side-link" data-tab="squads">Squads &amp; tiers</div>
     <div class="side-link" data-tab="alerts">Squad alerts <span class="side-badge" id="alertCount" style="display:none">0</span></div>
+    <div class="side-link" data-tab="transfers">Transfers <span class="side-badge" id="transferCount" style="display:none">0</span></div>
     <div class="side-link" data-tab="injuries">Injury status</div>
     <div class="side-link" data-tab="insights">Insights articles</div>
+    <div class="side-link" data-tab="publish">Publishing</div>
   </div>
   <div class="main">
 
@@ -112,6 +114,82 @@
         <div class="load-status" id="alertsStatus"></div>
       </div>
       <div id="alertsEditor"></div>
+    </div>
+
+    <div id="page-transfers" class="page" style="display:none">
+      <h1 class="page-title">Transfers</h1>
+      <p class="page-sub">Same tools as the Transfer desk, plus every player carrying no weight. Moves, exits and new signings all edit the squads.json you export below.</p>
+      <div class="card">
+        <h2>1. Load data</h2>
+        <div class="help">Loads <code>public/squads.json</code>, <code>public/fpl-data.json</code> and the nightly <code>public/transfers.json</code> feed log.</div>
+        <div class="row">
+          <button id="autoLoadTransfers">Load current live data</button>
+        </div>
+        <div class="load-status" id="transfersStatus"></div>
+      </div>
+      <div id="transfersEditor"></div>
+    </div>
+
+    <div id="page-publish" class="page" style="display:none">
+      <h1 class="page-title">Publishing</h1>
+      <p class="page-sub">Set this up once and every editor tab gets a <b>Publish to live site</b> button that commits straight to the repo — no downloading, no re-uploading.</p>
+      <div class="card">
+        <h2>Connection</h2>
+        <div class="help">
+          <b>Recommended:</b> leave this on <i>Netlify function</i>. The GitHub token then lives in Netlify's environment
+          variables (<code>GITHUB_TOKEN</code>, <code>GITHUB_REPO</code>, <code>ADMIN_SECRET</code>) and never touches this browser.
+          Use <i>GitHub token in this browser</i> only if you can't add the function — the token is then stored in this
+          browser's local storage, on this device.
+        </div>
+        <div class="row" style="margin-top:12px">
+          <select id="pubMode">
+            <option value="function">Netlify function (recommended)</option>
+            <option value="github">GitHub token in this browser</option>
+          </select>
+        </div>
+        <div id="pubFunctionFields" style="margin-top:12px">
+          <div class="row">
+            <label>Function URL <input type="text" id="pubFnUrl" placeholder="/.netlify/functions/commit" style="width:300px" /></label>
+            <label>Passphrase <input type="password" id="pubSecret" placeholder="matches ADMIN_SECRET" style="width:200px" /></label>
+          </div>
+        </div>
+        <div id="pubGithubFields" style="margin-top:12px; display:none">
+          <div class="row">
+            <label>Repo <input type="text" id="pubRepo" placeholder="yourname/wiscore" style="width:220px" /></label>
+            <label>Branch <input type="text" id="pubBranch" placeholder="main" style="width:110px" /></label>
+            <label>Token <input type="password" id="pubToken" placeholder="github_pat_…" style="width:250px" /></label>
+          </div>
+          <div class="help" style="margin-top:8px">Fine-grained PAT, this repo only, <b>Contents: read &amp; write</b>. Nothing else.</div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button id="pubSave">Save settings</button>
+          <button class="secondary" id="pubTest">Test connection</button>
+          <button class="danger" id="pubForget">Forget settings</button>
+        </div>
+        <div class="load-status" id="pubStatus"></div>
+      </div>
+      <div class="card">
+        <h2>One-time setup (Netlify function)</h2>
+        <div class="help">
+          1. Commit <code>netlify/functions/commit.js</code> and <code>netlify.toml</code> to the repo this admin site deploys from.<br />
+          2. In Netlify &rarr; Site configuration &rarr; Environment variables, add <code>GITHUB_TOKEN</code> (fine-grained PAT,
+          Contents: read &amp; write), <code>GITHUB_REPO</code> (<code>owner/name</code>), <code>GITHUB_BRANCH</code> (usually <code>main</code>)
+          and <code>ADMIN_SECRET</code> (any passphrase you choose).<br />
+          3. Redeploy, put the same passphrase in the box above, hit <b>Test connection</b>.
+        </div>
+      </div>
+      <div class="card">
+        <h2>Recent publishes</h2>
+        <div id="pubLog"><div class="empty">Nothing published from this browser yet.</div></div>
+      </div>
+      <div class="card">
+        <h2>What still runs on its own</h2>
+        <div class="help">
+          The nightly job refreshes injuries, squad moves, gameweek history and the transfer feed without you —
+          publishing is only for hand edits made here. A publish commits one file, Netlify redeploys in about a
+          minute, and the live site serves it on the next load.
+        </div>
+      </div>
     </div>
 
     <div id="page-injuries" class="page" style="display:none">
@@ -166,6 +244,143 @@ function download(filename, obj) {
   a.click();
 }
 
+/* ---------------- PUBLISHING (commit straight to the repo) ---------------- */
+const PUB_KEY = 'wi_publish_cfg';
+const PUB_LOG_KEY = 'wi_publish_log';
+const pubCfg = () => { try { return JSON.parse(localStorage.getItem(PUB_KEY)) || {}; } catch { return {}; } };
+const pubReady = () => {
+  const c = pubCfg();
+  return c.mode === 'github' ? !!(c.repo && c.token) : !!(c.fnUrl || c.mode === 'function');
+};
+const b64 = str => btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+
+async function publishFile(path, obj, message) {
+  const c = pubCfg();
+  const content = JSON.stringify(obj, null, 0);
+  if (c.mode === 'github') {
+    if (!c.repo || !c.token) throw new Error('Add your repo and token on the Publishing tab first.');
+    const branch = c.branch || 'main';
+    const api = `https://api.github.com/repos/${c.repo}/contents/${path}`;
+    const headers = { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    let sha;
+    const head = await fetch(`${api}?ref=${encodeURIComponent(branch)}`, { headers });
+    if (head.ok) sha = (await head.json()).sha;
+    else if (head.status === 401 || head.status === 403) throw new Error('GitHub rejected the token (check Contents: read & write).');
+    else if (head.status !== 404) throw new Error('GitHub read failed: ' + head.status);
+    const put = await fetch(api, {
+      method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message || 'admin: update ' + path, content: b64(content), branch, ...(sha ? { sha } : {}) }),
+    });
+    const out = await put.json();
+    if (!put.ok) throw new Error(out.message || 'GitHub write failed: ' + put.status);
+    return { url: out.commit && out.commit.html_url, commit: out.commit && out.commit.sha };
+  }
+  const url = c.fnUrl || '/.netlify/functions/commit';
+  const res = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content, message: message || 'admin: update ' + path, secret: c.secret || '' }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok || out.error) throw new Error(out.error || 'Publish failed: ' + res.status);
+  return out;
+}
+
+function pubLogAdd(entry) {
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(PUB_LOG_KEY)) || []; } catch { log = []; }
+  log.unshift(entry);
+  localStorage.setItem(PUB_LOG_KEY, JSON.stringify(log.slice(0, 25)));
+  renderPubLog();
+}
+
+function renderPubLog() {
+  const el = document.getElementById('pubLog');
+  if (!el) return;
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(PUB_LOG_KEY)) || []; } catch { log = []; }
+  el.innerHTML = log.length
+    ? `<table><thead><tr><th>When</th><th>File</th><th>Result</th></tr></thead><tbody>${log.map(l => `<tr>
+        <td>${new Date(l.at).toLocaleString('en-GB')}</td>
+        <td><code>${l.path}</code></td>
+        <td>${l.ok ? (l.url ? `<a href="${l.url}" target="_blank" rel="noopener">committed</a>` : 'committed') : `<span style="color:#ff8b8b">${l.error}</span>`}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<div class="empty">Nothing published from this browser yet.</div>';
+}
+
+/* Adds a "Publish to live site" button next to a download button. */
+function attachPublish(container, path, getObj, label) {
+  const btn = document.createElement('button');
+  btn.textContent = label || ('Publish ' + path.split('/').pop() + ' to live site');
+  const status = document.createElement('span');
+  status.className = 'load-status';
+  status.style.marginLeft = '10px';
+  btn.addEventListener('click', async () => {
+    const obj = getObj();
+    if (!obj) { status.textContent = 'Nothing loaded to publish.'; return; }
+    btn.disabled = true; status.textContent = 'Publishing…';
+    try {
+      const out = await publishFile(path, obj);
+      status.innerHTML = '✓ Committed — live in about a minute.' + (out.url ? ` <a href="${out.url}" target="_blank" rel="noopener">View commit</a>` : '');
+      pubLogAdd({ at: new Date().toISOString(), path, ok: true, url: out.url });
+    } catch (err) {
+      status.textContent = String(err.message || err);
+      pubLogAdd({ at: new Date().toISOString(), path, ok: false, error: String(err.message || err) });
+    }
+    btn.disabled = false;
+  });
+  container.appendChild(btn);
+  container.appendChild(status);
+  if (!pubReady()) status.textContent = 'Set up the Publishing tab to enable this.';
+  return btn;
+}
+
+(function initPublishTab() {
+  const c = pubCfg();
+  const $ = id => document.getElementById(id);
+  $('pubMode').value = c.mode || 'function';
+  $('pubFnUrl').value = c.fnUrl || '';
+  $('pubSecret').value = c.secret || '';
+  $('pubRepo').value = c.repo || '';
+  $('pubBranch').value = c.branch || '';
+  $('pubToken').value = c.token || '';
+  const sync = () => {
+    const gh = $('pubMode').value === 'github';
+    $('pubGithubFields').style.display = gh ? 'block' : 'none';
+    $('pubFunctionFields').style.display = gh ? 'none' : 'block';
+  };
+  $('pubMode').addEventListener('change', sync); sync();
+  $('pubSave').addEventListener('click', () => {
+    localStorage.setItem(PUB_KEY, JSON.stringify({
+      mode: $('pubMode').value, fnUrl: $('pubFnUrl').value.trim(), secret: $('pubSecret').value,
+      repo: $('pubRepo').value.trim(), branch: $('pubBranch').value.trim(), token: $('pubToken').value.trim(),
+    }));
+    $('pubStatus').textContent = '✓ Saved on this device. Publish buttons are live on the other tabs.';
+  });
+  $('pubForget').addEventListener('click', () => {
+    localStorage.removeItem(PUB_KEY);
+    ['pubFnUrl', 'pubSecret', 'pubRepo', 'pubBranch', 'pubToken'].forEach(id => $(id).value = '');
+    $('pubStatus').textContent = 'Settings cleared from this browser.';
+  });
+  $('pubTest').addEventListener('click', async () => {
+    const cfg = pubCfg();
+    $('pubStatus').textContent = 'Testing…';
+    try {
+      if (cfg.mode === 'github') {
+        const r = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/public/squads.json?ref=${cfg.branch || 'main'}`,
+          { headers: { Authorization: 'Bearer ' + cfg.token, Accept: 'application/vnd.github+json' } });
+        $('pubStatus').textContent = r.ok ? '✓ Token can read the repo — writes should work.' : 'GitHub said ' + r.status + '. Check repo name, branch and token scope.';
+      } else {
+        const r = await fetch(cfg.fnUrl || '/.netlify/functions/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: cfg.secret || '' }) });
+        const out = await r.json().catch(() => ({}));
+        $('pubStatus').textContent = r.status === 400 && /path not allowed/i.test(out.error || '')
+          ? '✓ Function reachable and passphrase accepted.'
+          : (out.error || 'Function replied ' + r.status);
+      }
+    } catch (err) { $('pubStatus').textContent = String(err.message || err); }
+  });
+  renderPubLog();
+})();
+
 async function autoLoad(path, statusEl) {
   statusEl.textContent = 'Loading…';
   const SITE_BASE = 'https://wiscore.co/';
@@ -201,7 +416,10 @@ function buildPlayerRows() {
     const team = fplData.teams.find(t => t.name === club.name || t.short_name === club.short);
     const teamPlayers = team ? fplData.players.filter(p => p.team === team.id) : [];
     (club.players || []).forEach(p => {
-      const match = teamPlayers.find(fp => norm(fp.web_name).includes(norm(p.name)) || norm(fp.second_name).includes(norm(p.name)));
+      const match = teamPlayers.find(fp => {
+        const pn = norm(p.name);
+        return [fp.web_name, fp.second_name, fp.first_name + ' ' + fp.second_name].map(norm).includes(pn);
+      }) || null;
       rows.push({ club, squadPlayer: p, fplPlayer: match || null });
     });
   });
@@ -284,6 +502,16 @@ function renderPlayers() {
   btn2.addEventListener('click', () => { fplData._synthetic = false; fplData.fetched_at = new Date().toISOString(); download('fpl-data.json', fplData); });
   row.appendChild(btn1); row.appendChild(btn2);
   exportCard.appendChild(row);
+  const pubRow = document.createElement('div');
+  pubRow.className = 'row';
+  pubRow.style.marginTop = '10px';
+  attachPublish(pubRow, 'public/squads.json', () => squadsData, 'Publish squads.json');
+  exportCard.appendChild(pubRow);
+  const pubRow2 = document.createElement('div');
+  pubRow2.className = 'row';
+  pubRow2.style.marginTop = '8px';
+  attachPublish(pubRow2, 'public/fpl-data.json', () => fplData, 'Publish fpl-data.json');
+  exportCard.appendChild(pubRow2);
   el.appendChild(exportCard);
 }
 
@@ -391,6 +619,11 @@ function renderSquads() {
   btn.textContent = 'Download squads.json';
   btn.addEventListener('click', () => download('squads.json', squadsData));
   exportCard.appendChild(btn);
+  const pubRow = document.createElement('div');
+  pubRow.className = 'row';
+  pubRow.style.marginTop = '10px';
+  attachPublish(pubRow, 'public/squads.json', () => squadsData, 'Publish to live site');
+  exportCard.appendChild(pubRow);
   el.appendChild(exportCard);
 
   window.__jumpToClub = (name) => {
@@ -507,6 +740,11 @@ function renderInjuries() {
   btn.textContent = 'Download fpl-data.json';
   btn.addEventListener('click', () => { fplData._synthetic = false; fplData.fetched_at = new Date().toISOString(); download('fpl-data.json', fplData); });
   exportCard.appendChild(btn);
+  const pubRow = document.createElement('div');
+  pubRow.className = 'row';
+  pubRow.style.marginTop = '10px';
+  attachPublish(pubRow, 'public/fpl-data.json', () => { if (fplData) { fplData._synthetic = false; fplData.fetched_at = new Date().toISOString(); } return fplData; }, 'Publish to live site');
+  exportCard.appendChild(pubRow);
   el.appendChild(exportCard);
 }
 
@@ -592,7 +830,290 @@ function renderInsights() {
     download('insights.json', insightsData);
   });
   exportCard.appendChild(btn);
+  const pubRow = document.createElement('div');
+  pubRow.className = 'row';
+  pubRow.style.marginTop = '10px';
+  attachPublish(pubRow, 'public/insights.json', () => {
+    insightsData.articles.forEach(a => { if (!a.id) a.id = uid(); });
+    return insightsData;
+  }, 'Publish to live site');
+  exportCard.appendChild(pubRow);
   el.appendChild(exportCard);
+}
+
+/* ---------------- TRANSFERS ---------------- */
+let transfersLog = null;
+const trPending = [];
+const trStrip = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+const TR_DEPARTED = /(has joined|joined on loan|on loan (at|to)|left the club|transferred|signed for)/i;
+const trIsDeparted = p => !!p && (p.status === 'u' || TR_DEPARTED.test(p.news || ''));
+
+function trMatch(name, pool) {
+  const pn = trStrip(name);
+  if (!pn) return null;
+  const keys = fp => [fp.web_name, fp.second_name, fp.first_name + ' ' + fp.second_name,
+    fp.first_name + ' ' + fp.web_name].map(trStrip);
+  let hits = pool.filter(fp => keys(fp).includes(pn));
+  if (!hits.length) hits = pool.filter(fp => trStrip(fp.second_name).split(' ').slice(-1)[0] === pn);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+function trEnsure(c) {
+  if (!Array.isArray(c.players) || !c.players.length) {
+    c.players = [{ name: c.best, tier: 'best' }].concat(
+      (c.first || []).map(n => ({ name: n, tier: 'first' })),
+      (c.sub || []).map(n => ({ name: n, tier: 'sub' })),
+      (c.youth || []).map(n => ({ name: n, tier: 'youth' })));
+  }
+}
+
+function trRebuild(c) {
+  if (!c.players.some(p => p.tier === 'best')) {
+    const next = c.players.filter(p => p.tier === 'first').sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+    if (next) next.tier = 'best';
+  }
+  const byTier = t => c.players.filter(p => p.tier === t).sort((a, b) => (b.score || 0) - (a.score || 0)).map(p => p.name);
+  c.best = (c.players.find(p => p.tier === 'best') || {}).name || c.best;
+  c.first = byTier('first'); c.sub = byTier('sub'); c.youth = byTier('youth');
+}
+
+function trTeam(club) {
+  return fplData ? (fplData.teams.find(t => t.name === club.name || t.short_name === club.short) || null) : null;
+}
+
+function trMove(playerName, fromName, toName) {
+  const from = squadsData.clubs.find(c => c.name === fromName);
+  const to = toName ? squadsData.clubs.find(c => c.name === toName) : null;
+  const p = from && from.players.find(x => x.name === playerName);
+  if (!p) return;
+  from.players = from.players.filter(x => x !== p);
+  if (to) { to.players.push({ ...p, tier: p.tier === 'best' ? 'first' : p.tier }); trRebuild(to); }
+  trRebuild(from);
+  trPending.push({ player: playerName, from: fromName, to: toName || null });
+  renderTransfers();
+}
+
+function trAdd(name, clubName, tier, score) {
+  const club = squadsData.clubs.find(c => c.name === clubName);
+  if (!club || !name.trim()) return;
+  if (club.players.some(p => trStrip(p.name) === trStrip(name))) return;
+  const entry = { name: name.trim(), tier };
+  if (score !== '' && score != null && !isNaN(Number(score))) entry.score = Number(score);
+  club.players.push(entry);
+  trRebuild(club);
+  trPending.push({ player: entry.name, from: null, to: clubName, add: true, tier, score: entry.score });
+  renderTransfers();
+}
+
+/* Differences between squads.json and the live FPL squads. */
+function trDetect() {
+  if (!fplData || !squadsData) return [];
+  const clubOf = new Map();
+  squadsData.clubs.forEach(c => { const t = trTeam(c); if (t) clubOf.set(t.id, c); });
+  const found = [];
+  squadsData.clubs.forEach(club => {
+    const t = trTeam(club);
+    const pool = t ? fplData.players.filter(p => p.team === t.id) : [];
+    club.players.forEach(p => {
+      const inClub = trMatch(p.name, pool);
+      if (inClub && !trIsDeparted(inClub)) return;
+      const fp = inClub || trMatch(p.name, fplData.players);
+      if (!fp) { found.push({ kind: 'check', player: p.name, from: club.name, reason: 'Not in the FPL player list - confirm the departure or fix the spelling.' }); return; }
+      if (trIsDeparted(fp)) { found.push({ kind: 'out', player: p.name, from: club.name, reason: (fp.news || 'FPL lists this player as unavailable').trim() }); return; }
+      const dest = clubOf.get(fp.team);
+      if (dest && dest !== club) found.push({ kind: 'move', player: p.name, from: club.name, to: dest.name, reason: 'FPL now lists this player at ' + dest.name });
+    });
+  });
+  return found;
+}
+
+const trClubOptions = (selected, outLabel) => ['<option value="">' + (outLabel || 'Out of the league') + '</option>']
+  .concat(squadsData.clubs.map(c => `<option value="${c.name}"${c.name === selected ? ' selected' : ''}>${c.name}</option>`)).join('');
+const TR_TIERS = ['best', 'first', 'sub', 'youth'];
+const trTierOptions = sel => TR_TIERS.map(t => `<option value="${t}"${t === sel ? ' selected' : ''}>${t}</option>`).join('');
+
+document.getElementById('autoLoadTransfers').addEventListener('click', async () => {
+  const statusEl = document.getElementById('transfersStatus');
+  const [sq, fpl, log] = await Promise.all([
+    autoLoad('public/squads.json', statusEl),
+    autoLoad('public/fpl-data.json', statusEl),
+    autoLoad('public/transfers.json', statusEl),
+  ]);
+  if (sq) squadsData = sq;
+  if (fpl) fplData = fpl;
+  transfersLog = log || null;
+  if (sq) {
+    squadsData.clubs.forEach(trEnsure);
+    trPending.length = 0;
+    statusEl.textContent = '✓ Loaded squads.json' + (fpl ? ' + fpl-data.json' : '') + (log ? ' + transfers.json' : ' (no nightly transfers.json yet)');
+    renderTransfers();
+  }
+});
+
+function renderTransfers() {
+  const el = document.getElementById('transfersEditor');
+  if (!squadsData) { el.innerHTML = ''; return; }
+  squadsData.clubs.forEach(trEnsure);
+
+  const detected = trDetect();
+  const actionable = detected.filter(d => d.kind !== 'check');
+  const feed = (transfersLog && transfersLog.feed) || {};
+  const arrivals = ((transfersLog && transfersLog.arrivals) || [])
+    .filter(a => !squadsData.clubs.some(c => c.players.some(p => trStrip(p.name) === trStrip(a.player))));
+  const unscored = [];
+  squadsData.clubs.forEach(c => c.players.forEach(p => { if (typeof p.score !== 'number' || !p.score) unscored.push({ club: c, p }); }));
+
+  const badge = document.getElementById('transferCount');
+  const outstanding = actionable.length + arrivals.length + unscored.length;
+  badge.textContent = outstanding;
+  badge.style.display = outstanding ? 'inline-block' : 'none';
+
+  el.innerHTML = `
+    <div class="card">
+      <h2>2. Detected from live FPL data</h2>
+      <div class="help" id="trDetectNote"></div>
+      <div id="trDetectList"></div>
+    </div>
+    <div class="card">
+      <h2>3. New signings from the transfer feed</h2>
+      <div class="help" id="trFeedNote"></div>
+      <div id="trFeedList"></div>
+    </div>
+    <div class="card">
+      <h2>4. Players with no weight</h2>
+      <div class="help">A player with no weight scores nothing when injured. Anyone arriving from another league lands here — set a weight (0.10&ndash;5.00) to bring them into the model.</div>
+      <div id="trUnscored"></div>
+    </div>
+    <div class="card">
+      <h2>5. Manual move</h2>
+      <div class="help">Move a player between clubs, or out of the league.</div>
+      <div class="row"><input type="search" id="trSearch" placeholder="Type a player name…" style="width:280px" /></div>
+      <div id="trSearchList"></div>
+    </div>
+    <div class="card">
+      <h2>6. Changes this session</h2>
+      <div id="trPendingList"></div>
+    </div>
+    <div class="card">
+      <h2>7. Export</h2>
+      <div class="help">Downloads updated <code>squads.json</code>. Replace <code>public/squads.json</code> in GitHub and commit.</div>
+      <div class="row"><button id="trExport">Download squads.json</button></div>
+      <div class="row" id="trPublishRow" style="margin-top:10px"></div>
+    </div>`;
+
+  /* detected */
+  document.getElementById('trDetectNote').textContent = fplData
+    ? (detected.length ? `${actionable.length} change${actionable.length === 1 ? '' : 's'} FPL suggests, ${detected.length - actionable.length} to check by hand.`
+      : 'Every squad matches the live FPL data.')
+    : 'fpl-data.json not loaded - detection unavailable.';
+  const dl = document.getElementById('trDetectList');
+  dl.innerHTML = detected.length ? `<table><thead><tr><th>Player</th><th>Change</th><th>Why</th><th></th></tr></thead><tbody>${
+    detected.map((d, i) => `<tr>
+      <td><b>${d.player}</b></td>
+      <td>${d.from}${d.to ? ' → ' + d.to : d.kind === 'out' ? ' → out of the league' : ''}</td>
+      <td style="color:var(--text-dim)">${d.reason}</td>
+      <td>${d.kind === 'check' ? '<span style="color:var(--text-dim)">Check</span>' : `<button data-tr-apply="${i}">Apply</button>`}</td>
+    </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing to apply.</div>';
+  dl.querySelectorAll('[data-tr-apply]').forEach(b => b.addEventListener('click', () => {
+    const d = detected[Number(b.dataset.trApply)];
+    trMove(d.player, d.from, d.to || null);
+  }));
+  if (actionable.length) {
+    const all = document.createElement('button');
+    all.className = 'secondary'; all.textContent = 'Apply all ' + actionable.length; all.style.marginTop = '12px';
+    all.addEventListener('click', () => actionable.forEach(d => trMove(d.player, d.from, d.to || null)));
+    dl.appendChild(all);
+  }
+
+  /* feed arrivals */
+  document.getElementById('trFeedNote').innerHTML = transfersLog
+    ? (feed.error ? `<span style="color:#e0b23c">Feed problem: ${feed.error}</span><br />` : '')
+      + `${feed.rows || 0} deals read${feed.fetched_at ? ' · ' + new Date(feed.fetched_at).toLocaleString('en-GB') : ''} · ${arrivals.length} signing${arrivals.length === 1 ? '' : 's'} to weight.`
+      + (feed.source ? ` <a href="${feed.source}" target="_blank" rel="noopener">Source</a>` : '')
+    : 'transfers.json not loaded - run the nightly job to populate the feed.';
+  const fl = document.getElementById('trFeedList');
+  fl.innerHTML = arrivals.length ? `<table><thead><tr><th>Player</th><th>Joining</th><th>From</th><th>Tier</th><th>Weight</th><th></th></tr></thead><tbody>${
+    arrivals.map((a, i) => `<tr>
+      <td><b>${a.player}</b></td>
+      <td><select data-tr-aclub="${i}">${trClubOptions(a.club, 'Pick a club')}</select></td>
+      <td style="color:var(--text-dim)">${a.from || 'unknown'}${a.detail ? ' · ' + a.detail : ''}</td>
+      <td><select data-tr-atier="${i}">${trTierOptions('first')}</select></td>
+      <td><input type="number" step="0.01" min="0" max="5" data-tr-ascore="${i}" style="width:80px" placeholder="0.00" /></td>
+      <td><button data-tr-addbtn="${i}">Add</button></td>
+    </tr>`).join('')}</tbody></table>` : '<div class="empty">No signings waiting.</div>';
+  fl.querySelectorAll('[data-tr-addbtn]').forEach(b => b.addEventListener('click', () => {
+    const i = Number(b.dataset.trAddbtn);
+    const club = fl.querySelector(`[data-tr-aclub="${i}"]`).value;
+    if (!club) return;
+    trAdd(arrivals[i].player, club, fl.querySelector(`[data-tr-atier="${i}"]`).value, fl.querySelector(`[data-tr-ascore="${i}"]`).value);
+  }));
+
+  /* unscored */
+  const ul = document.getElementById('trUnscored');
+  ul.innerHTML = unscored.length ? `<table><thead><tr><th>Player</th><th>Club</th><th>Tier</th><th>Now</th><th>Weight</th></tr></thead><tbody>${
+    unscored.map((u, i) => `<tr>
+      <td><b>${u.p.name}</b></td>
+      <td>${u.club.name}</td>
+      <td><select data-tr-utier="${i}">${trTierOptions(u.p.tier)}</select></td>
+      <td><span style="color:#e0b23c">no weight</span></td>
+      <td><input type="number" step="0.01" min="0" max="5" data-tr-uscore="${i}" style="width:80px" placeholder="0.00" /></td>
+    </tr>`).join('')}</tbody></table>
+    <div class="row" style="margin-top:12px"><button id="trSaveUnscored">Save weights</button></div>`
+    : '<div class="empty">Every player carries a weight.</div>';
+  const save = document.getElementById('trSaveUnscored');
+  if (save) save.addEventListener('click', () => {
+    unscored.forEach((u, i) => {
+      const v = ul.querySelector(`[data-tr-uscore="${i}"]`).value;
+      u.p.tier = ul.querySelector(`[data-tr-utier="${i}"]`).value;
+      if (v !== '' && !isNaN(Number(v))) u.p.score = Number(v);
+    });
+    squadsData.clubs.forEach(trRebuild);
+    renderTransfers();
+  });
+
+  /* manual search */
+  const search = document.getElementById('trSearch');
+  const sl = document.getElementById('trSearchList');
+  const renderSearch = () => {
+    const q = trStrip(search.value);
+    if (q.length < 2) { sl.innerHTML = '<div class="help">Type at least two letters.</div>'; return; }
+    const hits = [];
+    squadsData.clubs.forEach(c => c.players.forEach(p => { if (trStrip(p.name).includes(q)) hits.push({ p, c }); }));
+    sl.innerHTML = hits.length ? `<table><thead><tr><th>Player</th><th>Now at</th><th>Move to</th><th></th></tr></thead><tbody>${
+      hits.slice(0, 15).map(({ p, c }, i) => `<tr>
+        <td><b>${p.name}</b> <span style="color:var(--text-dim)">${p.tier}${typeof p.score === 'number' ? ' · ' + p.score : ' · no weight'}</span></td>
+        <td>${c.name}</td>
+        <td><select data-tr-dest="${i}">${trClubOptions(c.name)}</select></td>
+        <td><button data-tr-go="${i}">Apply</button></td>
+      </tr>`).join('')}</tbody></table>` : '<div class="empty">No player by that name.</div>';
+    sl.querySelectorAll('[data-tr-go]').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.trGo);
+      const { p, c } = hits[i];
+      const dest = sl.querySelector(`[data-tr-dest="${i}"]`).value;
+      if (dest === c.name) return;
+      trMove(p.name, c.name, dest || null);
+    }));
+  };
+  search.addEventListener('input', renderSearch);
+  renderSearch();
+
+  /* pending */
+  document.getElementById('trPendingList').innerHTML = trPending.length
+    ? `<table><thead><tr><th>Player</th><th>Change</th></tr></thead><tbody>${trPending.map(c => `<tr>
+        <td><b>${c.player}</b></td>
+        <td>${c.add ? 'Added to ' + c.to + ' · ' + c.tier + (c.score ? ' · ' + c.score : ' · no weight') : c.from + ' → ' + (c.to || 'out of the league')}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<div class="empty">Nothing changed yet. Reload above to discard changes.</div>';
+
+  document.getElementById('trExport').addEventListener('click', () => {
+    squadsData.generated = new Date().toISOString();
+    download('squads.json', squadsData);
+  });
+  attachPublish(document.getElementById('trPublishRow'), 'public/squads.json', () => {
+    squadsData.generated = new Date().toISOString();
+    return squadsData;
+  }, 'Publish to live site');
 }
 </script>
 </body>
